@@ -178,7 +178,7 @@ class AlpacaDjangoReporter(AlpacaReporter):
                         "Full URI": request.build_absolute_uri(),
                     },
                     "GET Parameters": request.GET.dict(),
-                    "POST Parameters": post_parameters,
+                    "POST Parameters": post_parameters.dict(),
                     "Cookies": request.COOKIES,
                     "Request Headers": request_headers,
                 })
