@@ -150,9 +150,9 @@ class AlpacaDjangoReporter(AlpacaReporter):
                     stack_trace = []
                 problem_hash = hashlib.md5(
                     ':'.join((
-                        log_record.pathname,
-                        log_record.funcName,
-                        context_line
+                        str(log_record.pathname),
+                        str(log_record.funcName),
+                        str(context_line)
                     ))
                 ).hexdigest()
             else:

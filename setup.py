@@ -9,7 +9,7 @@ README = open(os.path.join(here, 'README.txt')).read()
 
 setup(
     name='alpaca-django',
-    version='0.1.0',
+    version='0.1.1',
     description='Error reporter for Alpaca error aggregator.',
     long_description=README,
     classifiers=[
