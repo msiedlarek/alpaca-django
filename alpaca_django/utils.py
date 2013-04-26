@@ -1,8 +1,11 @@
 import re
 import pprint
 
+from alpaca_django.compat import _text
+
+
 def get_lines_from_file(filename, lineno, context_lines, loader=None,
-                         module_name=None):
+                        module_name=None):
     """
     Returns context_lines before and after lineno from file.
     Returns (pre_context_lineno, pre_context, context_line, post_context).
@@ -28,13 +31,16 @@ def get_lines_from_file(filename, lineno, context_lines, loader=None,
         if match:
             encoding = match.group(1)
             break
-    source = [unicode(sline, encoding, 'replace') for sline in source]
+    source = [_text(sline, encoding, 'replace') for sline in source]
     lower_bound = max(0, lineno - context_lines)
     upper_bound = lineno + context_lines
     pre_context = [line.strip('\n') for line in source[lower_bound:lineno]]
     context_line = source[lineno].strip('\n')
-    post_context = [line.strip('\n') for line in source[lineno + 1:upper_bound]]
+    post_context = [
+        line.strip('\n') for line in source[lineno + 1:upper_bound]
+    ]
     return lower_bound, pre_context, context_line, post_context
+
 
 def serialize_stack(tb, exception_reporter_filter):
     frames = []
@@ -60,12 +66,15 @@ def serialize_stack(tb, exception_reporter_filter):
                 context=context_line,
                 post_context=post_context,
                 variables=serialize_object_dict(
-                    exception_reporter_filter \
-                        .get_traceback_frame_variables(None, tb.tb_frame)
+                    exception_reporter_filter.get_traceback_frame_variables(
+                        None,
+                        tb.tb_frame
+                    )
                 )
             ))
         tb = tb.tb_next
     return frames
+
 
 def serialize_object_dict(iterable_of_twotuples):
     result = dict()
@@ -73,6 +82,6 @@ def serialize_object_dict(iterable_of_twotuples):
         try:
             formatted_value = pprint.pformat(value)
         except Exception as exception:
-            formatted_value = "Formatting error: %s" % str(exception)
+            formatted_value = _text("Formatting error: {}").format(exception)
         result[key] = formatted_value
     return result

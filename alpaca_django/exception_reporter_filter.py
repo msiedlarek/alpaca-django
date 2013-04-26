@@ -1,5 +1,8 @@
 from django.views.debug import SafeExceptionReporterFilter
 
+from alpaca_django.compat import _text
+
+
 class ForcedSafeExceptionReporterFilter(SafeExceptionReporterFilter):
 
     def is_active(self, request):
@@ -15,12 +18,14 @@ class ForcedSafeExceptionReporterFilter(SafeExceptionReporterFilter):
                 key,
                 (
                     value
-                    if not key.lower().startswith('password')
+                    if (
+                        not key.lower().startswith('password')
                         and not key.lower().startswith('passwd')
-                    else
-                    '*****'
+                    ) else
+                    _text('*****')
                 )
             ) for key, value in variables
         ]
+
 
 exception_reporter_filter = ForcedSafeExceptionReporterFilter()

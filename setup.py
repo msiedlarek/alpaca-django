@@ -1,28 +1,36 @@
-# -*- coding: utf-8 -*-
-
 import os
-
 from setuptools import setup, find_packages
 
+from alpaca_django import __version__ as alpaca_django_version
+
+
 here = os.path.abspath(os.path.dirname(__file__))
-README = open(os.path.join(here, 'README.txt')).read()
+
+
+requirements = [
+    'django',
+    'msgpack-python',
+    'pyzmq',
+]
+
 
 setup(
     name='alpaca-django',
-    version='0.1.1',
-    description='Error reporter for Alpaca error aggregator.',
-    long_description=README,
+    version=alpaca_django_version,
+    description='',
+    long_description='',
     classifiers=[
-        "Programming Language :: Python",
-        "Framework :: Django",
-        "Topic :: Internet :: WWW/HTTP",
+        'Programming Language :: Python',
+        'Programming Language :: Python 3',
+        'Framework :: Django',
+        'Topic :: Internet :: WWW/HTTP',
     ],
-    author=u'Mikołaj Siedlarek',
+    author='Mikołaj Siedlarek',
     author_email='m.siedlarek@nctz.net',
     url='https://github.com/msiedlarek/alpaca-django',
-    keywords='web alpaca django error aggregation',
+    keywords='web alpaca error exception logging monitoring django',
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
-    install_requires=['Django', 'requests']
+    install_requires=requirements
 )

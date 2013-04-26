@@ -1,69 +1,45 @@
 import sys
 import datetime
 import logging
-import threading
 import traceback
-import hmac
 import hashlib
 import pprint
 
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
-
-try:
-    import cStringIO as StringIO
-except ImportError:
-    import StringIO
-
-import requests
+import msgpack
+import zmq
 
 from alpaca_django import settings, utils
+from alpaca_django.compat import _text, _string_types
 from alpaca_django.exception_reporter_filter import SafeExceptionReporterFilter
+
 
 logger = logging.getLogger(__name__)
 
+
 class AlpacaReporter(object):
 
-    def __init__(self, endpoint_url, environment, api_key, ca_bundle=None):
-        self.endpoint_url = endpoint_url
-        self.environment = environment
-        self.api_key = api_key
-        self.ca_bundle = ca_bundle
+    _message_encoding = 'utf-8'
+
+    def __init__(self, monitor_host, monitor_port):
+        self._monitor_address = 'tcp://{host}:{port}'.format(
+            host=monitor_host,
+            port=monitor_port
+        )
+        self._socket = zmq.Context.instance().socket(zmq.PUB)
+        logger.info(
+            "Connecting to Alpaca monitor on {address}.".format(
+                address=self._monitor_address
+            )
+        )
+        self._socket.connect(self._monitor_address)
 
     def send(self, report):
         try:
-            pickling_protocol = settings.get_alpaca_pickling_protocol()
-            pickled_report = pickle.dumps(report, pickling_protocol)
-            signature = hmac.new(
-                self.api_key,
-                pickled_report,
-                hashlib.sha256
-            ).hexdigest()
-            if self.ca_bundle is None:
-                verify = True
-            else:
-                verify = self.ca_bundle
-            response = requests.post(
-                self.endpoint_url,
-                data=pickled_report,
-                headers={
-                    'Content-Type': 'application/x-pickle.python',
-                    'X-Requested-With': 'AlpacaReporter',
-                    'Alpaca-Environment': self.environment,
-                    'Alpaca-Signature': signature,
-                },
-                timeout=settings.get_alpaca_connection_timeout(),
-                verify=verify
-            )
-            if response.status_code != 200:
-                raise RuntimeError(
-                    "Alpaca responded with HTTP %d: %s" % (
-                        response.status_code,
-                        response.content.strip()
-                    )
-                )
+            environment = _text(settings.get_alpaca_environment()).encode(
+                'utf-8'
+            ) + bytes(bytearray([0]))
+            report = msgpack.packb(report, encoding=self._message_encoding)
+            self._socket.send_multipart((environment, report))
         except:
             logger.error(
                 "Error while sending report to Alpaca: %s" % '\n'.join(
@@ -71,11 +47,6 @@ class AlpacaReporter(object):
                 ).strip()
             )
 
-    def send_asynchronously(self, report):
-        threading.Thread(
-            target=self.send,
-            args=(report,),
-        ).start()
 
 class AlpacaDjangoReporter(AlpacaReporter):
 
@@ -95,8 +66,11 @@ class AlpacaDjangoReporter(AlpacaReporter):
                 exc_info = sys.exc_info()
             if exc_info is not None and exc_info != (None, None, None):
                 message = (
-                    ''.join(
-                        traceback.format_exception_only(*exc_info[:2])
+                    _text('').join(
+                        map(
+                            _text,
+                            traceback.format_exception_only(*exc_info[:2])
+                        )
                     ).strip()
                 )
                 stack_trace = utils.serialize_stack(
@@ -112,21 +86,21 @@ class AlpacaDjangoReporter(AlpacaReporter):
                 if most_important_frame is None:
                     most_important_frame = stack_trace[-1]
                 problem_hash = hashlib.md5(
-                    ':'.join((
-                        str(exc_info[0]),
-                        most_important_frame['filename'],
-                        most_important_frame['function'],
-                        most_important_frame['context']
-                    ))
+                    _text(':').join((
+                        _text(exc_info[0]),
+                        _text(most_important_frame['filename']),
+                        _text(most_important_frame['function']),
+                        _text(most_important_frame['context']),
+                    )).encode(encoding='utf-8', errors='replace')
                 ).hexdigest()
             elif log_record is not None:
                 try:
-                    if isinstance(log_record.msg, basestring):
+                    if isinstance(log_record.msg, _string_types):
                         message = log_record.msg % log_record.args
                     else:
                         message = pprint.pformat(log_record.msg)
                 except Exception as exception:
-                    message = "Formatting error: %s" % str(exception)
+                    message = _text("Formatting error: {}").format(exception)
                 pre_context_lineno, pre_context, context_line, post_context = (
                     utils.get_lines_from_file(
                         log_record.pathname,
@@ -149,15 +123,16 @@ class AlpacaDjangoReporter(AlpacaReporter):
                 else:
                     stack_trace = []
                 problem_hash = hashlib.md5(
-                    ':'.join((
-                        str(log_record.pathname),
-                        str(log_record.funcName),
-                        str(context_line)
+                    _text(':').join((
+                        _text(log_record.pathname),
+                        _text(log_record.funcName),
+                        _text(context_line)
                     ))
                 ).hexdigest()
             else:
                 raise RuntimeError(
-                    "Neither log record nor exception information was supplied."
+                    "Neither log record nor exception information was"
+                    " supplied."
                 )
             report = {
                 'hash': problem_hash,
@@ -168,21 +143,23 @@ class AlpacaDjangoReporter(AlpacaReporter):
             }
             if request is not None:
                 post_parameters = (
-                    self._exception_reporter_filter.get_post_parameters(request)
+                    self._exception_reporter_filter.get_post_parameters(
+                        request
+                    )
                 )
                 request_headers = (
-                    utils.serialize_object_dict(request.META.iteritems())
+                    utils.serialize_object_dict(request.META.items())
                 )
                 report['environment_data'].update({
-                    "General": {
-                        "Full URI": request.build_absolute_uri(),
+                    _text("General"): {
+                        _text("Full URI"): request.build_absolute_uri(),
                     },
-                    "GET Parameters": request.GET.dict(),
-                    "POST Parameters": post_parameters.dict(),
-                    "Cookies": request.COOKIES,
-                    "Request Headers": request_headers,
+                    _text("GET Parameters"): request.GET.dict(),
+                    _text("POST Parameters"): post_parameters.dict(),
+                    _text("Cookies"): request.COOKIES,
+                    _text("Request Headers"): request_headers,
                 })
-            self.send_asynchronously(report)
+            self.send(report)
         except Exception:
             logger.error(
                 "Error while preparing report for Alpaca: %s" % '\n'.join(

@@ -46,12 +46,12 @@ Example configuration
             },
             'alpaca_django': {
                 'handlers': ['mail_admins', 'console',],
-                'level': 'WARNING',
+                'level': 'DEBUG',
                 'propagate': False,
             },
         }
     }
 
-    ALPACA_ENDPOINT_URL = 'http://localhost:6543/api/report'
-    ALPACA_ENVIRONMENT = 'stage0'
-    ALPACA_API_KEY = 'KK8TRdGFQeHs0qgIMo8ONyJuITs5TqxEi6CoHBQ56Zj3CZIomh'
+    ALPACA_PROJECT_PATH_FRAGMENT = 'myproject'
+    ALPACA_ENVIRONMENT = 'staging'
+    ALPACA_MONITOR_HOST = 'monitoring.example.com'
