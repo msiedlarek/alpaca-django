@@ -4,6 +4,7 @@ import logging
 import traceback
 import hashlib
 import pprint
+import threading
 
 import msgpack
 import zmq
@@ -19,20 +20,15 @@ logger = logging.getLogger(__name__)
 class AlpacaReporter(object):
 
     _message_encoding = 'utf-8'
-    _zmq_context = zmq.Context()
+    _threadlocal = threading.local()
 
     def __init__(self, monitor_host, monitor_port):
         self._monitor_address = 'tcp://{host}:{port}'.format(
             host=monitor_host,
             port=monitor_port
         )
-        self._socket = self._zmq_context.socket(zmq.PUB)
-        logger.info(
-            "Connecting to Alpaca monitor on {address}.".format(
-                address=self._monitor_address
-            )
-        )
-        self._socket.connect(self._monitor_address)
+        if not hasattr(self._threadlocal, 'sockets'):
+            self._threadlocal.sockets = {}
 
     def send(self, report):
         try:
@@ -40,13 +36,28 @@ class AlpacaReporter(object):
                 'utf-8'
             ) + bytes(bytearray([0]))
             report = msgpack.packb(report, encoding=self._message_encoding)
-            self._socket.send_multipart((environment, report))
+            self._get_socket().send_multipart((environment, report))
         except:
             logger.error(
                 "Error while sending report to Alpaca: %s" % '\n'.join(
                     traceback.format_exception_only(*sys.exc_info()[:2])
                 ).strip()
             )
+
+    def _get_context(self):
+        return zmq.Context.instance()
+
+    def _get_socket(self):
+        if not self._monitor_address in self._threadlocal.sockets:
+            socket = self._get_context().socket(zmq.PUB)
+            logger.info(
+                "Connecting to Alpaca monitor on {address}.".format(
+                    address=self._monitor_address
+                )
+            )
+            socket.connect(self._monitor_address)
+            self._threadlocal.sockets[self._monitor_address] = socket
+        return self._threadlocal.sockets[self._monitor_address]
 
 
 class AlpacaDjangoReporter(AlpacaReporter):
