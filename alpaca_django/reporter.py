@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class AlpacaReporter(object):
 
     _message_encoding = 'utf-8'
-    _zmq_context = zmq.Context.instance()
+    _zmq_context = zmq.Context()
 
     def __init__(self, monitor_host, monitor_port):
         self._monitor_address = 'tcp://{host}:{port}'.format(
