@@ -19,13 +19,14 @@ logger = logging.getLogger(__name__)
 class AlpacaReporter(object):
 
     _message_encoding = 'utf-8'
+    _zmq_context = zmq.Context.instance()
 
     def __init__(self, monitor_host, monitor_port):
         self._monitor_address = 'tcp://{host}:{port}'.format(
             host=monitor_host,
             port=monitor_port
         )
-        self._socket = zmq.Context.instance().socket(zmq.PUB)
+        self._socket = self._zmq_context.socket(zmq.PUB)
         logger.info(
             "Connecting to Alpaca monitor on {address}.".format(
                 address=self._monitor_address
