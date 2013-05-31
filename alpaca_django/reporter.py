@@ -19,8 +19,12 @@ logger = logging.getLogger(__name__)
 
 class AlpacaReporter(object):
 
+    _subscription_confirmation_timeout = 5000 # milliseconds
     _message_encoding = 'utf-8'
     _threadlocal = threading.local()
+
+    class ConnectionError(Exception):
+        pass
 
     def __init__(self, monitor_host, monitor_port):
         self._monitor_address = 'tcp://{host}:{port}'.format(
@@ -49,13 +53,28 @@ class AlpacaReporter(object):
 
     def _get_socket(self):
         if not self._monitor_address in self._threadlocal.sockets:
-            socket = self._get_context().socket(zmq.PUB)
+            # Using XPUB socket to receive subscription messages.
+            socket = self._get_context().socket(zmq.XPUB)
             logger.info(
-                "Connecting to Alpaca monitor on {address}.".format(
+                "Connecting to Alpaca monitor at {address}...".format(
                     address=self._monitor_address
                 )
             )
             socket.connect(self._monitor_address)
+            # Wait for a subscription message, preventing the slow joiner
+            # syndrome.
+            event = socket.poll(
+                timeout=self._subscription_confirmation_timeout
+            )
+            if event == 0:
+                raise self.ConnectionError(
+                    "Timeout while waiting for a subscription message."
+                )
+            logger.info(
+                "Connected to Alpaca monitor at {address}.".format(
+                    address=self._monitor_address
+                )
+            )
             self._threadlocal.sockets[self._monitor_address] = socket
         return self._threadlocal.sockets[self._monitor_address]
 
