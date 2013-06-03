@@ -51,8 +51,8 @@ class AlpacaReporter(object):
                 ).strip()
             )
 
-    @contextlib.contextmanager
     @classmethod
+    @contextlib.contextmanager
     def _socket_for(cls, address):
         if address not in cls._socket_pools:
             with cls._socket_pools_lock:
