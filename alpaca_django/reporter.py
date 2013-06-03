@@ -61,7 +61,7 @@ class AlpacaReporter(object):
                     "Opening {connections} connections to Alpaca monitor at"
                     " {address}...".format(
                         connections=settings.get_alpaca_connection_pool_size(),
-                        address=cls._monitor_address
+                        address=address
                     )
                 )
                 for i in range(settings.get_alpaca_connection_pool_size()):
