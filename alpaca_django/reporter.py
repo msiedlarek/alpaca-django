@@ -5,12 +5,13 @@ import traceback
 import hashlib
 import pprint
 import threading
+import contextlib
 
 import msgpack
 import zmq
 
 from alpaca_django import settings, utils
-from alpaca_django.compat import _text, _string_types
+from alpaca_django.compat import _text, _string_types, Queue
 from alpaca_django.exception_reporter_filter import SafeExceptionReporterFilter
 
 
@@ -20,8 +21,11 @@ logger = logging.getLogger(__name__)
 class AlpacaReporter(object):
 
     _subscription_confirmation_timeout = 5000 # milliseconds
+    _waiting_for_free_socket_timeout = 5 # seconds
     _message_encoding = 'utf-8'
-    _threadlocal = threading.local()
+
+    _socket_pools = {}
+    _socket_pools_lock = threading.Lock()
 
     class ConnectionError(Exception):
         pass
@@ -31,8 +35,6 @@ class AlpacaReporter(object):
             host=monitor_host,
             port=monitor_port
         )
-        if not hasattr(self._threadlocal, 'sockets'):
-            self._threadlocal.sockets = {}
 
     def send(self, report):
         try:
@@ -40,7 +42,8 @@ class AlpacaReporter(object):
                 'utf-8'
             ) + bytes(bytearray([0]))
             report = msgpack.packb(report, encoding=self._message_encoding)
-            self._get_socket().send_multipart((environment, report))
+            with self._socket_for(self._monitor_address) as socket:
+                socket.send_multipart((environment, report))
         except:
             logger.error(
                 "Error while sending report to Alpaca: %s" % '\n'.join(
@@ -48,35 +51,49 @@ class AlpacaReporter(object):
                 ).strip()
             )
 
-    def _get_context(self):
+    @contextlib.contextmanager
+    @classmethod
+    def _socket_for(cls, address):
+        if address not in cls._socket_pools:
+            with cls._socket_pools_lock:
+                cls._socket_pools[address] = Queue()
+                logger.info(
+                    "Opening {connections} connections to Alpaca monitor at"
+                    " {address}...".format(
+                        connections=settings.get_alpaca_connection_pool_size(),
+                        address=cls._monitor_address
+                    )
+                )
+                for i in range(settings.get_alpaca_connection_pool_size()):
+                    cls._socket_pools[address].put(
+                        cls._create_socket(address)
+                    )
+        socket = cls._socket_pools[address].get(
+            True,
+            cls._waiting_for_free_socket_timeout
+        )
+        yield socket
+        cls._socket_pools[address].put(socket)
+
+    @classmethod
+    def _get_context(cls):
         return zmq.Context.instance()
 
-    def _get_socket(self):
-        if not self._monitor_address in self._threadlocal.sockets:
-            # Using XPUB socket to receive subscription messages.
-            socket = self._get_context().socket(zmq.XPUB)
-            logger.info(
-                "Connecting to Alpaca monitor at {address}...".format(
-                    address=self._monitor_address
-                )
+    @classmethod
+    def _create_socket(cls, address):
+        # Using XPUB socket to receive subscription messages.
+        socket = cls._get_context().socket(zmq.XPUB)
+        socket.connect(address)
+        # Wait for a subscription message, preventing the slow joiner
+        # syndrome.
+        event = socket.poll(
+            timeout=cls._subscription_confirmation_timeout
+        )
+        if event == 0:
+            raise cls.ConnectionError(
+                "Timeout while waiting for a subscription message."
             )
-            socket.connect(self._monitor_address)
-            # Wait for a subscription message, preventing the slow joiner
-            # syndrome.
-            event = socket.poll(
-                timeout=self._subscription_confirmation_timeout
-            )
-            if event == 0:
-                raise self.ConnectionError(
-                    "Timeout while waiting for a subscription message."
-                )
-            logger.info(
-                "Connected to Alpaca monitor at {address}.".format(
-                    address=self._monitor_address
-                )
-            )
-            self._threadlocal.sockets[self._monitor_address] = socket
-        return self._threadlocal.sockets[self._monitor_address]
+        return socket
 
 
 class AlpacaDjangoReporter(AlpacaReporter):

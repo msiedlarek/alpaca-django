@@ -29,3 +29,9 @@ else:
         if isinstance(value, basestring):
             return value.decode(encoding=encoding, errors=errors)
         return unicode(value)
+
+
+if python_major_version == 3:
+    from queue import Queue
+else:
+    from Queue import Queue
