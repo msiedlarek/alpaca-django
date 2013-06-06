@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 from setuptools import setup, find_packages
 
@@ -17,16 +19,24 @@ requirements = [
 setup(
     name='alpaca-django',
     version=alpaca_django_version,
-    description='',
-    long_description='',
+    description='Alpaca error logger for Django applications.',
+    long_description=open(os.path.join(here, 'README.txt')).read(),
     classifiers=[
-        'Programming Language :: Python',
-        'Programming Language :: Python 3',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.2',
+        'Programming Language :: Python :: 3.3',
+        'Environment :: Web Environment',
+        'Intended Audience :: Developers',
         'Framework :: Django',
         'Topic :: Internet :: WWW/HTTP',
+        'Operating System :: OS Independent',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Topic :: System :: Logging',
+        'Topic :: System :: Monitoring',
+        'License :: OSI Approved :: Apache Software License',
     ],
     author='Mikołaj Siedlarek',
-    author_email='m.siedlarek@nctz.net',
+    author_email='msiedlarek@nctz.net',
     url='https://github.com/msiedlarek/alpaca-django',
     keywords='web alpaca error exception logging monitoring django',
     packages=find_packages(),
