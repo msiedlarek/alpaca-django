@@ -200,6 +200,7 @@ class AlpacaDjangoReporter(AlpacaReporter):
                 )
                 report['environment_data'].update({
                     _text("General"): {
+                        _text("Command line arguments"): ' '.join(sys.argv),
                         _text("Full URI"): request.build_absolute_uri(),
                     },
                     _text("GET Parameters"): request.GET.dict(),
