@@ -187,7 +187,11 @@ class AlpacaDjangoReporter(AlpacaReporter):
                 'date': datetime.datetime.utcnow().isoformat() + 'Z',
                 'message': message,
                 'stack_trace': stack_trace,
-                'environment_data': {},
+                'environment_data': {
+                    _text("General"): {
+                        _text("Command line arguments"): ' '.join(sys.argv),
+                    },
+                },
             }
             if request is not None:
                 post_parameters = (
@@ -198,11 +202,10 @@ class AlpacaDjangoReporter(AlpacaReporter):
                 request_headers = (
                     utils.serialize_object_dict(request.META.items())
                 )
+                report['environment_data'][_text("General")].update({
+                    _text("Full URI"): request.build_absolute_uri(),
+                })
                 report['environment_data'].update({
-                    _text("General"): {
-                        _text("Command line arguments"): ' '.join(sys.argv),
-                        _text("Full URI"): request.build_absolute_uri(),
-                    },
                     _text("GET Parameters"): request.GET.dict(),
                     _text("POST Parameters"): post_parameters.dict(),
                     _text("Cookies"): request.COOKIES,
