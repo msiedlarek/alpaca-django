@@ -11,7 +11,7 @@ import msgpack
 import zmq
 
 from alpaca_django import settings, utils
-from alpaca_django.compat import _text, _string_types, Queue
+from alpaca_django.compat import _text, _string_types, Queue, QueueEmpty
 from alpaca_django.exception_reporter_filter import SafeExceptionReporterFilter
 
 
@@ -28,6 +28,9 @@ class AlpacaReporter(object):
     _socket_pools_lock = threading.Lock()
 
     class ConnectionError(Exception):
+        pass
+
+    class SocketPoolError(Exception):
         pass
 
     def __init__(self, monitor_host, monitor_port):
@@ -68,10 +71,13 @@ class AlpacaReporter(object):
                     cls._socket_pools[address].put(
                         cls._create_socket(address)
                     )
-        socket = cls._socket_pools[address].get(
-            True,
-            cls._waiting_for_free_socket_timeout
-        )
+        try:
+            socket = cls._socket_pools[address].get(
+                True,
+                cls._waiting_for_free_socket_timeout
+            )
+        except QueueEmpty:
+            raise cls.SocketPoolError("Connection limit exhausted.")
         yield socket
         cls._socket_pools[address].put(socket)
 

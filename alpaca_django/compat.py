@@ -32,6 +32,6 @@ else:
 
 
 if python_major_version == 3:
-    from queue import Queue
+    from queue import Queue, Empty as QueueEmpty
 else:
-    from Queue import Queue
+    from Queue import Queue, Empty as QueueEmpty
