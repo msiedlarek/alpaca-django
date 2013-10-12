@@ -1,0 +1,39 @@
+server {
+
+    location / {
+        default_type text/html;
+        return 200
+"<!DOCTYPE html>
+<html lang=\"en\">
+    <head>
+        <meta charset=\"utf-8\" />
+        <title>alpaca-django</title>
+    </head>
+    <body>
+        <h1>alpaca-django testing applications</h1>
+        <table border=\"1\">
+            <tr>
+                <th></th>
+                <th>Django 1.4</th>
+            </tr>
+            <tr>
+                <th>Python 2</th>
+                <td><a href=\"/p2d14\">p2d14</a></td>
+            </tr>
+        </table>
+    </body>
+</html>";
+    }
+
+    location /p2d14 {
+        fastcgi_pass localhost:9001;
+
+        include /etc/nginx/fastcgi_params;
+
+        fastcgi_param PATH_INFO $uri;
+        fastcgi_param X_FORWARDED_FOR $proxy_add_x_forwarded_for;
+
+        proxy_set_header X-Forwarded-For $remote_addr;
+    }
+
+}
