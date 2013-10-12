@@ -28,4 +28,4 @@ def get_alpaca_monitor_port():
 
 
 def get_alpaca_connection_pool_size():
-    return getattr(settings, 'ALPACA_CONNECTION_POOL_SIZE', 20)
+    return getattr(settings, 'ALPACA_CONNECTION_POOL_SIZE', 3)
