@@ -1,4 +1,5 @@
 import sys
+import platform
 import datetime
 import logging
 import traceback
@@ -196,6 +197,7 @@ class AlpacaDjangoReporter(AlpacaReporter):
                 'environment_data': {
                     _text("General"): {
                         _text("Command line arguments"): ' '.join(sys.argv),
+                        _text("Hostname"): platform.node(),
                     },
                 },
             }

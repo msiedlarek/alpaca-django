@@ -70,7 +70,7 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'simple': {
-            'format': '%(asctime)s %(levelname)s %(name)s #%(lineno)s: %(message)s',
+            'format': '%(asctime)s [%(process)d:%(thread)d] %(levelname)s %(name)s #%(lineno)s: %(message)s',
         },
     },
     'filters': {
