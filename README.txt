@@ -5,6 +5,11 @@ This is an Alpaca error logger for Django-based applications.
 
 See https://github.com/msiedlarek/alpaca
 
+Installation
+------------
+
+    $ pip install alpaca-django
+
 Example configuration
 ---------------------
 
