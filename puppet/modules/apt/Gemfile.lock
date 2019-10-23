@@ -2,11 +2,11 @@ GEM
   remote: https://rubygems.org/
   specs:
     diff-lcs (1.2.4)
-    facter (1.7.3)
+    facter (1.7.6)
     metaclass (0.0.1)
     mocha (0.14.0)
       metaclass (~> 0.0.1)
-    puppet (2.7.23)
+    puppet (2.7.26)
       facter (~> 1.5)
     puppetlabs_spec_helper (0.4.1)
       mocha (>= 0.10.5)
@@ -29,7 +29,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  puppet (~> 2.7.0)
+  puppet
   puppetlabs_spec_helper
   rake
   rspec-puppet
